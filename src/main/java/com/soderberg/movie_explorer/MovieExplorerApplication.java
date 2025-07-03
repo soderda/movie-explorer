@@ -17,9 +17,6 @@ public class MovieExplorerApplication implements CommandLineRunner{
 
 	@Override
 	public void run(String... args) throws Exception {
-		System.err.println("**************************************************");
-		System.err.println("API key from Spring property: " + themoviedbApiKey);
-		System.err.println("**************************************************");
 	}
 
 }
