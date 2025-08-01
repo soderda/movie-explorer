@@ -1,13 +1,22 @@
 package com.soderberg.movie_explorer.model;
 
+import java.util.Set;
+
+import com.soderberg.movie_explorer.model.tmdb.Genre;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 
 /**
  * A class representing the model of a favorite movie.
- * Used so users can favorite different movies.
+ * Used so users can favorite movies.
  * 
  */
 @Entity
@@ -15,68 +24,93 @@ public class FavoriteMovie {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long favoriteId;
+
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(
+        name = "favorite_movie_genres",
+        joinColumns = @JoinColumn(name = "favorite_movie_id"),
+        inverseJoinColumns = @JoinColumn(name = "genre_id")
+    )
+    private Set<Genre> genres;
+
+    @Column(length = 2000)
+    private String overview;
+
+    private Boolean adult;
+    private String belongsToCollection;    
     private Long id;
-
-    private Long movieId;
+    private Double popularity;
+    private Long runtime;
     private String title;
+    private Double voteAverage;
+    private Long voteCount;
 
-    /**
-     * Creates a new {@link FavoriteMovie} instance.
-     * 
-     */
-    public FavoriteMovie() {
-
+    public Long getFavoriteId() {
+        return favoriteId;
     }
-
-    /**
-     * Get the internal database id of the {@link FavoriteMovie}.
-     * 
-     * @return id of the {@link FavoriteMovie}
-     */
+    public void setFavoriteId(Long favoriteId) {
+        this.favoriteId = favoriteId;
+    }
+    public Boolean getAdult() {
+        return adult;
+    }
+    public void setAdult(Boolean adult) {
+        this.adult = adult;
+    }
+    public String getBelongsToCollection() {
+        return belongsToCollection;
+    }
+    public void setBelongsToCollection(String belongsToCollection) {
+        this.belongsToCollection = belongsToCollection;
+    }
+    public Set<Genre> getGenres() {
+        return genres;
+    }
+    public void setGenres(Set<Genre> genres) {
+        this.genres = genres;
+    }
     public Long getId() {
         return id;
     }
-
-    /**
-     * Get the MovieDatabaseID of the {@link FavoriteMovie}.
-     * 
-     * @return movieId of the {@link FavoriteMovie}
-     */
-    public Long getMovieId() {
-        return movieId;
+    public void setId(Long id) {
+        this.id = id;
     }
-    
-    /**
-     * Get the title of the {@link FavoriteMovie}.
-     * 
-     * @return title of the {@link FavoriteMovie}
-     */
+    public String getOverview() {
+        return overview;
+    }
+    public void setOverview(String overview) {
+        this.overview = overview;
+    }
+    public Double getPopularity() {
+        return popularity;
+    }
+    public void setPopularity(Double popularity) {
+        this.popularity = popularity;
+    }
+    public Long getRuntime() {
+        return runtime;
+    }
+    public void setRuntime(Long runtime) {
+        this.runtime = runtime;
+    }
     public String getTitle() {
         return title;
     }
-
-
-    /**
-     * Sets the movieId of the {@link FavoriteMovie}.
-     * The movieId should match TheMovieDB id.
-     * 
-     * @param movieId the movieId of the {@link FavoriteMovie}
-     */
-    public void setMovieId(Long movieId) {
-        this.movieId = movieId;
-    }
-
-    /**
-     * Sets the title of the {@link FavoriteMovie}.
-     * 
-     * @param title the title of the {@link FavoriteMovie}
-     */
     public void setTitle(String title) {
         this.title = title;
     }
-
-    @Override
-    public String toString() {
-       return "FavoriteMovie id:" + id + " movieId:" + movieId + " title:" + title;
+    public Double getVoteAverage() {
+        return voteAverage;
     }
+    public void setVoteAverage(Double voteAverage) {
+        this.voteAverage = voteAverage;
+    }
+    public Long getVoteCount() {
+        return voteCount;
+    }
+    public void setVoteCount(Long voteCount) {
+        this.voteCount = voteCount;
+    }
+    
 }
