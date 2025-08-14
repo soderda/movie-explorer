@@ -12,5 +12,5 @@ public class FavoriteMovieRequest {
 
     public void setMovieId(Long movieId) {
         this.movieId = movieId;
-    }    
+    }
 }

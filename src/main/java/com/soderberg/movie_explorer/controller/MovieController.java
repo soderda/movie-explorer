@@ -12,7 +12,6 @@ import com.soderberg.movie_explorer.model.tmdb.MovieDetails;
 import com.soderberg.movie_explorer.service.TMDBService;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -38,13 +37,11 @@ public class MovieController {
         responses = {
             @ApiResponse(
                 responseCode = "200", 
-                description = "Successfully retreived popular movies", 
-                content = @Content()
+                description = "Successfully retreived popular movies"
             ),
             @ApiResponse(
                 responseCode = "500", 
-                description = "Internal server error when fetching popular movies", 
-                content = @Content()
+                description = "Internal server error when fetching popular movies"
             )
         }
     )
@@ -59,13 +56,11 @@ public class MovieController {
         responses = {
             @ApiResponse(
                 responseCode = "200",
-                description =  "Successfully retreived movie details",
-                content = @Content()
+                description =  "Successfully retrieved movie details"
             ),
             @ApiResponse(
                 responseCode = "500",
-                description =  "Either the movie id is wrong or TheMovieDB cannot be reached",
-                content = @Content()
+                description =  "Either the movie id is wrong or TheMovieDB cannot be reached"
             )
         }
     )

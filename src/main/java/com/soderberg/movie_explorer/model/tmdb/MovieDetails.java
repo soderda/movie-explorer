@@ -4,6 +4,9 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import io.swagger.v3.oas.annotations.Hidden;
+
+@Hidden
 public class MovieDetails {
     private Boolean adult;
     private Long budget;
