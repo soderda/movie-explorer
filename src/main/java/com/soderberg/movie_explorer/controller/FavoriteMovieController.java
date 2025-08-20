@@ -129,12 +129,7 @@ public class FavoriteMovieController {
         @Parameter(description = "Returns all results on one page if true", example = "false") @RequestParam(required = false) Boolean all,
         @RequestHeader("X-User-Id") Long userId)  {
 
-        if (Boolean.TRUE.equals(all)) {
-            List<FavoriteMovieDto> allMovies = favoriteMovieService.getAllFavoriteMovies(userId);
-            return ResponseEntity.ok(new FavoriteMovieResponse(allMovies, 0, 1, allMovies.size()));
-        }
-
-        FavoriteMovieResponse response = favoriteMovieService.getPaginatedFavoriteMovies(userId, page, size);
+        FavoriteMovieResponse response = favoriteMovieService.getFavoriteMovies(userId, page, size, all);
         
         return ResponseEntity.ok(response);
     }
@@ -162,7 +157,17 @@ public class FavoriteMovieController {
     @GetMapping("/search")
     public ResponseEntity<FavoriteMovieResponse> searchFavorites(@Valid @ParameterObject FavoriteMovieFilter filter, @RequestHeader("X-User-Id") Long userId) {
         List<FavoriteMovieDto> results = favoriteMovieService.searchFavoriteMovies(userId, filter);
-        return ResponseEntity.ok(new FavoriteMovieResponse(results, 0, 1, results.size()));
+        return ResponseEntity.ok(
+            new FavoriteMovieResponse(
+                results, 
+                0, 
+                1, 
+                results.size(),
+                results.size(),
+                false,
+                false
+            )
+        );
     }
 
 

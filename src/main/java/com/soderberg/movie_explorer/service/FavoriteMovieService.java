@@ -7,6 +7,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -40,32 +41,23 @@ public class FavoriteMovieService {
     private final UserFavoriteMovieRepository userFavoriteMovieRepository;
     private final TMDBService tmdbService;
 
+    @Value("${hours.until.movie.refetch:24}")
+    private int hoursUntilMovieRefetch;
+
     @Autowired
     public FavoriteMovieService(MovieMapper movieMapper, MovieRepository movieRepository, UserFavoriteMovieRepository userFavoriteMovieRepository, TMDBService tmdbService) {
         this.movieMapper = movieMapper;
         this.movieRepository = movieRepository;
         this.userFavoriteMovieRepository = userFavoriteMovieRepository;
         this.tmdbService = tmdbService;
-    }
+    }    
 
     public FavoriteMovieDto saveFavoriteMovie(Long userId, Long movieId) {    
         if (userFavoriteMovieRepository.existsById_UserIdAndId_MovieId(userId, movieId)) {
             throw new AlreadyExistsException("User already has this movie in favorites");
         }
 
-        FavoriteMovie movie = movieRepository.findByMovieId(movieId).orElse(null);
-
-        if (movie == null || movie.getUpdatedAt().isBefore(LocalDateTime.now().minusDays(1))) {
-            MovieDetails details = tmdbService.fetchMovieDetails(String.valueOf(movieId));
-            if (details == null) {
-                throw new ResourceNotFoundException("Movie not found in TMDB");
-            }
-
-            movie = movieMapper.movieDetailsToFavoriteMovie(details);
-            movie.setUpdatedAt(LocalDateTime.now());
-
-            movie = movieRepository.save(movie);
-        }
+        FavoriteMovie movie = getOrReFetchMovie(movieId);
         UserFavoriteMovieId userFavoriteMovieId = new UserFavoriteMovieId(userId, movieId);
         UserFavoriteMovie link = new UserFavoriteMovie(userFavoriteMovieId, movie);
         userFavoriteMovieRepository.save(link);
@@ -96,43 +88,30 @@ public class FavoriteMovieService {
         return results;
     }
 
-    public List<FavoriteMovieDto> getAllFavoriteMoviesSorted(Long userId) {
-        List<UserFavoriteMovie> userFavorites = userFavoriteMovieRepository.findAllById_UserIdOrderByCreatedAtDesc(userId);
-        List<FavoriteMovieDto> movies = userFavorites.stream()
-            .map(UserFavoriteMovie::getMovie)
-            .map(movieMapper::movieToDto)
-            .toList();
-        return movies;
-    }
+    public FavoriteMovieResponse getFavoriteMovies(Long userId, int page, int size, Boolean all) {
+        if (Boolean.TRUE.equals(all)) {
+            List<FavoriteMovieDto> allMovies = getAllFavoriteMovies(userId);
+            return new FavoriteMovieResponse(
+                allMovies, 
+                0,
+                1, 
+                allMovies.size(), 
+                allMovies.size(), 
+                false, 
+                false);
+        }
 
-    public FavoriteMovieResponse getPaginatedFavoriteMovies(Long userId, int page, int size) {        
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<UserFavoriteMovie> userFavoritesPage = userFavoriteMovieRepository.findAllById_UserId(userId, pageable);
-    
-        List<FavoriteMovieDto> movies = userFavoritesPage.getContent()
-            .stream()
-            .map(UserFavoriteMovie::getMovie)
-            .map(movieMapper::movieToDto)
-            .toList();
-        return new FavoriteMovieResponse(movies, userFavoritesPage.getNumber(), userFavoritesPage.getTotalPages(), userFavoritesPage.getSize());
+        return getPaginatedFavoriteMovies(userId, page, size);
     }
 
     public List<FavoriteMovieDto> searchFavoriteMovies(Long userId, FavoriteMovieFilter filter) {
         Specification<UserFavoriteMovie> spec = UserFavoriteMovieSpecification.filterBy(userId, filter);
         List<FavoriteMovieDto> movies = userFavoriteMovieRepository.findAll(spec)
             .stream()
-            .map(UserFavoriteMovie::getMovie)
-            .map(movieMapper::movieToDto)
-            .toList();
-        return movies;
-    }
-
-    public List<FavoriteMovieDto> getAllFavoriteMovies(Long userId) {
-        List<FavoriteMovieDto> movies = userFavoriteMovieRepository
-            .findAllById_UserId(userId)
-            .stream()
-            .map(UserFavoriteMovie::getMovie)
-            .map(movieMapper::movieToDto)
+            .map(link -> {
+                FavoriteMovie movie = getOrReFetchMovie(link.getMovie().getMovieId());
+                return movieMapper.movieToDto(movie);
+            })
             .toList();
         return movies;
     }
@@ -148,5 +127,70 @@ public class FavoriteMovieService {
             // No one has the movie favorited, remove from database
             movieRepository.deleteByMovieId(movieId);
         }
+    }
+
+    /** ######################  */
+    /** Private helper methods **/
+    /** ######################  */
+
+    private FavoriteMovie getOrReFetchMovie(Long movieId) {
+        FavoriteMovie movie = movieRepository.findByMovieId(movieId).orElse(null);
+
+        if (movie == null ||movie.getUpdatedAt().isBefore(LocalDateTime.now().minusHours(hoursUntilMovieRefetch))) {
+            MovieDetails details = tmdbService.fetchMovieDetails(String.valueOf(movieId));
+            if (details == null) {
+                throw new ResourceNotFoundException("Movie not found in TMDB");
+            }
+
+            movie = movieMapper.movieDetailsToFavoriteMovie(details);
+            movie.setUpdatedAt(LocalDateTime.now());
+            movie = movieRepository.save(movie);
+        }
+        return movie;
+    }
+
+    private List<FavoriteMovieDto> getAllFavoriteMovies(Long userId) {
+        List<FavoriteMovieDto> movies = userFavoriteMovieRepository
+            .findAllById_UserId(userId)
+            .stream()
+            .map(link -> {
+                FavoriteMovie movie = getOrReFetchMovie(link.getMovie().getMovieId());
+                return movieMapper.movieToDto(movie);
+            })
+            .toList();
+        return movies;
+    }
+
+    private FavoriteMovieResponse getPaginatedFavoriteMovies(Long userId, int page, int size) {        
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<UserFavoriteMovie> userFavoritesPage = userFavoriteMovieRepository.findAllById_UserId(userId, pageable);
+    
+        List<FavoriteMovieDto> movies = userFavoritesPage.getContent()
+            .stream()
+            .map(link -> {
+                FavoriteMovie movie = getOrReFetchMovie(link.getMovie().getMovieId());
+                return movieMapper.movieToDto(movie);
+            })
+            .toList();
+        return new FavoriteMovieResponse(
+            movies, 
+            userFavoritesPage.getNumber(), 
+            userFavoritesPage.getTotalPages(), 
+            userFavoritesPage.getTotalElements(),
+            userFavoritesPage.getSize(),
+            userFavoritesPage.hasNext(),
+            userFavoritesPage.hasPrevious()
+        );
+    }
+
+    private List<FavoriteMovieDto> getAllFavoriteMoviesSorted(Long userId) {
+        List<UserFavoriteMovie> userFavorites = userFavoriteMovieRepository.findAllById_UserIdOrderByCreatedAtDesc(userId);
+        List<FavoriteMovieDto> movies = userFavorites.stream()
+            .map(link -> {
+                FavoriteMovie movie = getOrReFetchMovie(link.getMovie().getMovieId());
+                return movieMapper.movieToDto(movie);
+            })
+            .toList();
+        return movies;
     }
 }
